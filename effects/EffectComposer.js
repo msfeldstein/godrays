@@ -179,6 +179,5 @@ Object.assign( THREE.Pass.prototype, {
 require('./RenderPass')
 require('./ShaderPass')
 require('./CopyShader')
-require('./DotScreenShader')
 require('./MaskPass')
 
