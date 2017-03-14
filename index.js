@@ -1,9 +1,11 @@
 // Using edan kwans custom threejs build for MultiRenderTargets: https://github.com/mrdoob/three.js/pull/9358/commits/9b4824fd2753ba8a214c40d39a378dc43004d129
-const fs = require('fs')
-require('./ShaderExtras')
-require('./EffectComposer')
-require('./HorizontalBlurShader.js')
-require('./VerticalBlurShader.js')
+require('./effects/EffectComposer')
+
+const AdditiveShaderDef = require('./shaders/Additive')
+const GodraysShaderDef = require('./shaders/Godrays')
+const PassthroughShaderDef = require('./shaders/Passthrough')
+const PhongPlusOcclusionShaderDef = require('./shaders/PhongPlusOcclusion')
+const DirectionalBlurShaderDef = require('./shaders/DirectionalBlur')
 
 const canvas = document.createElement('canvas')
 document.body.appendChild(canvas)
@@ -16,7 +18,6 @@ const renderer = new THREE.WebGLRenderer({
 if ( !renderer.extensions.get('WEBGL_draw_buffers') ) {
   alert("WEBGL_draw_buffers unsupported")
 }
-
 
 const target = new THREE.WebGLMultiRenderTarget(window.innerWidth, window.innerHeight)
 target.texture.format = THREE.RGBFormat;
@@ -34,9 +35,6 @@ target.attachments.push( target.texture.clone() );
 target.attachments[0].name = 'diffuse';
 target.attachments[1].name = 'normal';
 
-
-
-
 const scene = new THREE.Scene()
 const camera = new THREE.PerspectiveCamera(
   45, canvas.width / canvas.height, 1, 1000)
@@ -44,15 +42,7 @@ camera.position.z = 10
 camera.lookAt(new THREE.Vector3())
 
 
-var material = new THREE.RawShaderMaterial({
-					vertexShader: fs.readFileSync('./shaders/phongPlusDepthMRT.vs').toString(),
-					fragmentShader: fs.readFileSync('./shaders/phongPlusDepthMRT.fs').toString(),
-					uniforms: {
-            color: {type: 'v3', value: [0.0, 0.0, 0.0]},
-            isLightSource: {type: 'f', value: 1.0},
-						repeat: { type: 'v2', value: new THREE.Vector2(5, 0.5) }
-					}
-				});
+var material = new THREE.RawShaderMaterial(PhongPlusOcclusionShaderDef);
 
 
 const lightMaterial = material.clone()
@@ -67,68 +57,68 @@ scene.add(lightSource)
 
 const occluderMaterial = material.clone()
 occluderMaterial.uniforms.isLightSource.value = 0.0
-occluderMaterial.uniforms.color.value = [1.0, 0.0, 0.0]
+occluderMaterial.uniforms.color.value = [0.7, 0.1, 0.3]
 const occluder = new THREE.Mesh(
-  new THREE.TorusKnotBufferGeometry( .8, .2, 100, 16 ),
+  new THREE.TorusBufferGeometry(1.5, .1, 32, 32),
   occluderMaterial
 )
 scene.add(occluder)
-
-scene.add(new THREE.PointLight({color: 0xffffff}))
-scene.add(new THREE.AmbientLight(0xffffff, 0.3))
-
+const occluder2 = new THREE.Mesh(
+  new THREE.TorusBufferGeometry(1.85, .1, 32, 64),
+  occluderMaterial
+)
+scene.add(occluder2)
+const occluder3 = new THREE.Mesh(
+  new THREE.TorusBufferGeometry(2.2, .1, 12, 64),
+  occluderMaterial
+)
+scene.add(occluder3)
 
 const postCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
-var postMaterial = new THREE.RawShaderMaterial({
-  vertexShader: fs.readFileSync('./shaders/pass.vs').toString(),
-  fragmentShader: fs.readFileSync('./shaders/pass.fs').toString(),
-  uniforms: {
-    tDiffuse: { type: 't', value: target.attachments[0] },
-    tNormal: { type: 't', value: target.attachments[1] },
-    showAttachment: { type: 'i', value: 0 }
-  }
-});
+var postMaterial = new THREE.RawShaderMaterial(PassthroughShaderDef);
+postMaterial.uniforms.tDiffuse.value = target.attachments[0]
 var postPlane = new THREE.PlaneGeometry(2, 2);
 var postQuad = new THREE.Mesh(postPlane, postMaterial);
 postScene = new THREE.Scene();
 postScene.add(postQuad);
 
-const hblur = new THREE.ShaderPass(THREE.HorizontalBlurShader)
-const vblur = new THREE.ShaderPass(THREE.VerticalBlurShader)
+const hblur = new THREE.ShaderPass(DirectionalBlurShaderDef)
+const vblur = new THREE.ShaderPass(DirectionalBlurShaderDef)
 
 var bluriness = 2;
-hblur.uniforms[ "h" ].value = bluriness / window.innerWidth;
-vblur.uniforms[ "v" ].value = bluriness / window.innerHeight;
+hblur.uniforms.h.value = bluriness / window.innerWidth;
+vblur.uniforms.v.value = bluriness / window.innerHeight;
 var composer = new THREE.EffectComposer(renderer)
-const Godrays = THREE.Extras.Shaders.Godrays
-Godrays.uniforms.fExposure.value = 0.23
 composer.addPass(new THREE.RenderPass(postScene, postCamera))
 composer.addPass(hblur)
 composer.addPass(vblur)
 composer.addPass(hblur)
 composer.addPass(vblur)
+const Godrays = require('./shaders/Godrays')
+Godrays.uniforms.fExposure.value = 0.23
+Godrays.uniforms.fDecay.value = 0.91
+Godrays.uniforms.fDensity.value = 0.9
 var grPass = new THREE.ShaderPass( Godrays );
 
 grPass.needsSwap = true;
 composer.addPass(grPass)
-var additive = new THREE.ShaderPass(THREE.Extras.Shaders.Additive)
+var additive = new THREE.ShaderPass(AdditiveShaderDef)
 additive.uniforms.tAdd.value = target.attachments[1]
 additive.uniforms.fCoeff.value = 0.5
-
-console.log(target.texture)
 additive.renderToScreen = true
 additive.needsSwap = true
 composer.addPass(additive)
 
-
-
-
 function render(t) {
   requestAnimationFrame(render)
   renderer.render(scene, camera, target)  
-  occluder.position.set(2.2 * Math.cos(t/ 2000), 0, 2.2 * Math.sin(t / 2000))
+  // occluder.position.set(2.2 * Math.cos(t/ 2000), 0, 2.2 * Math.sin(t / 2000))
   occluder.rotation.x += 0.01
   occluder.rotation.y += 0.03
+  occluder2.rotation.x -= 0.01
+  occluder2.rotation.y += 0.02
+  occluder3.rotation.x += 0.01
+  occluder3.rotation.y -= 0.02
   composer.render()
 }
 render()

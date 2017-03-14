@@ -10,7 +10,7 @@ void main() {
   gl_FragData[0] = vec4(isLightSource, isLightSource, isLightSource, 1.0);
 
   // write normals to G-Buffer
-  vec3 lightPos = vec3(1.0, 1.0, 1.0);
+  vec3 lightPos = vec3(0.0, 0.0, 1.0);
   float lightPower = dot(lightPos, vNormal);
   gl_FragData[1] = vec4(lightPower * color, 0.0);
 }
