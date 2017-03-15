@@ -59,17 +59,17 @@ const occluderMaterial = material.clone()
 occluderMaterial.uniforms.isLightSource.value = 0.0
 occluderMaterial.uniforms.color.value = [0.7, 0.1, 0.3]
 const occluder = new THREE.Mesh(
-  new THREE.TorusBufferGeometry(1.5, .1, 32, 32),
+  new THREE.TorusBufferGeometry(1.5, .15, 32, 32),
   occluderMaterial
 )
 scene.add(occluder)
 const occluder2 = new THREE.Mesh(
-  new THREE.TorusBufferGeometry(1.85, .1, 32, 64),
+  new THREE.TorusBufferGeometry(1.85, .15, 32, 64),
   occluderMaterial
 )
 scene.add(occluder2)
 const occluder3 = new THREE.Mesh(
-  new THREE.TorusBufferGeometry(2.2, .1, 12, 64),
+  new THREE.TorusBufferGeometry(2.2, .15, 12, 64),
   occluderMaterial
 )
 scene.add(occluder3)
@@ -104,7 +104,7 @@ grPass.needsSwap = true;
 composer.addPass(grPass)
 var additive = new THREE.ShaderPass(AdditiveShaderDef)
 additive.uniforms.tAdd.value = target.attachments[1]
-additive.uniforms.fCoeff.value = 0.5
+additive.uniforms.fCoeff.value = 1
 additive.renderToScreen = true
 additive.needsSwap = true
 composer.addPass(additive)
@@ -115,10 +115,10 @@ function render(t) {
   // occluder.position.set(2.2 * Math.cos(t/ 2000), 0, 2.2 * Math.sin(t / 2000))
   occluder.rotation.x += 0.01
   occluder.rotation.y += 0.03
-  occluder2.rotation.x -= 0.01
+  occluder2.rotation.x = 0.013
   occluder2.rotation.y += 0.02
-  occluder3.rotation.x += 0.01
-  occluder3.rotation.y -= 0.02
+  occluder3.rotation.x += 0.014
+  occluder3.rotation.y += 0.023
   composer.render()
 }
 render()
