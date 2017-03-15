@@ -1,0 +1,3 @@
+Based off of Thibaut Despoulain's (godray tutorial)[http://bkcore.com/blog/3d/webgl-three-js-volumetric-light-godrays.html] and Edan Kwan's Multi-Render Target (threejs enhancements)[http://edankwan.com/tests/threejs-multi-render-target/webgl_mrt.html].
+
+This godray example shows using MultiRender targets to render both the main scene, and the occlusion map in one pass, for a small performance enhancement, rather than rendering the occlusion map separately.  It does add a decent amount of complexity to the code, as you can't use regular materials, though I could see a way to convert ShaderMaterials into OcclusionShaderMaterials.
